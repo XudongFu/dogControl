@@ -39,7 +39,7 @@ private:
 	const int FailCount = 20;
 	bool ReveiveStr(int timeout, String str);
 	bool IsConnectToWIFI();
-
+	bool IsConnected;
 	const int HardWareSize = 2;
 	int CurrentIndex = 0;
 
@@ -151,6 +151,7 @@ wifi::wifi(int rx, int wx)
 	mySerial->begin(115200);
 	buffer = new char[size];
 	buffer[size - 1] = '\0';
+	this->IsConnected = false;
 }
 
 wifi::~wifi()
@@ -209,6 +210,27 @@ void wifi::setHandle(void(*fun)(String))
 	this->handle = fun;
 }
 
+bool IsCommandCorrect(String command)
+{
+	if (command.length()%2==0)
+	{
+		int half = command.length() / 2;
+		for (int i =0;i<half;i++)
+		{
+			if (command[i]!=command[i+half])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+
 void wifi::Loop()
 {
 	String command = receiveback(100);
@@ -219,7 +241,13 @@ void wifi::Loop()
 		if (index > 0 && index < command.length() - 1)
 		{
 			command = command.substring(index+1);
-			index = command.lastIndexOf(',');
+			if (!IsCommandCorrect(command))
+			{
+				this->sendData("error");
+				return;
+			}
+			command = command.substring(command.length()/2);
+			this->sendData("ok");
 			if (index > 0 && index < command.length() - 1)
 			{
 				String aa = command.substring(0, index);
@@ -233,7 +261,6 @@ void wifi::Loop()
 				Serial.print(degree);
 				Serial.println("");
 			}
-
 		}
 		else
 		{
@@ -244,8 +271,8 @@ void wifi::Loop()
 	{
 		if (command.indexOf("CLOSED") > 0)
 		{
-
-
+			this->IsConnected = false;
+			this->conn();
 		}
 	}
 }
@@ -307,6 +334,7 @@ bool wifi::conn()
 		}
 		if (connect)
 		{
+			this->IsConnected = true;
 			FailTime = 0;
 			Serial.println("connect to ap successful");
 		}
